@@ -298,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <i class="fas fa-eye" id="togglePassword"></i>
             </div>
             <button type="submit">Ingresar</button>
-            <a href="#" class="forgot">¿Olvidaste tu contraseñas?</a>
+            <a href="#" class="forgot">¿Olvidaste tu contraseña?</a>
         </form>
     </div>
 
