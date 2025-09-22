@@ -8,7 +8,7 @@ if (isset($_SESSION['user_id'])) {
 }
 
 require 'db.php';
-include 'header.php';
+// include 'header.php';
 
 $error = '';
 $account_disabled = false;
