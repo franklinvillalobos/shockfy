@@ -1,7 +1,13 @@
 <?php
 session_start();
-require 'db.php';
 
+// Si el usuario ya está logueado, redirigirlo
+if (isset($_SESSION['user_id'])) {
+    header('Location: index.php');
+    exit;
+}
+
+require 'db.php';
 include 'header.php';
 
 $error = '';
@@ -28,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['role'] = $user['role'];
             $_SESSION['full_name'] = $user['full_name'];
             header('Location: index.php');
+            exit;
         }
     } else {
         $error = 'Usuario o contraseña incorrectos';
