@@ -28,7 +28,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['role'] = $user['role'];
             $_SESSION['full_name'] = $user['full_name'];
             header('Location: index.php');
-            exit;
         }
     } else {
         $error = 'Usuario o contraseña incorrectos';
