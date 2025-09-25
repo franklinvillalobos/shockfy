@@ -2,9 +2,50 @@
 require 'db.php';
 require 'auth.php'; // requiere iniciar sesion
 
-include 'header.php';
+// ================= Prefs de zona horaria / formato =================
+$user_tz  = $_SESSION['timezone']    ?? null;
+$time_fmt = $_SESSION['time_format'] ?? null;
+if (!$user_tz || !$time_fmt) {
+  $uid = $_SESSION['user_id'] ?? null;
+  if ($uid) {
+    $q = $pdo->prepare("SELECT timezone, time_format FROM users WHERE id = :id LIMIT 1");
+    $q->execute([':id' => $uid]);
+    if ($row = $q->fetch(PDO::FETCH_ASSOC)) {
+      $user_tz  = $row['timezone']    ?: 'America/New_York';
+      $time_fmt = $row['time_format'] ?: '12h';
+      $_SESSION['timezone']    = $user_tz;
+      $_SESSION['time_format'] = $time_fmt;
+    }
+  }
+}
+$user_tz  = $user_tz  ?: 'America/New_York';
+$time_fmt = $time_fmt ?: '12h';
 
-// Traer la moneda elegida por el usuario
+// Helpers: convierte desde UTC a TZ del usuario y formatea
+function dt_in_tz($dt, string $tz): DateTime {
+  // Asumimos $dt guardado en UTC; si tu DB guarda local, cambia 'UTC' por tu TZ del server.
+  $d = ($dt instanceof DateTime)
+    ? (clone $dt)
+    : new DateTime((string)$dt, new DateTimeZone('UTC'));
+  $d->setTimezone(new DateTimeZone($tz));
+  return $d;
+}
+function fmt_time_for_user(DateTime $d, string $fmt): string {
+  return $fmt === '24h' ? $d->format('H:i') : $d->format('g:i A');
+}
+function fmt_datetime_for_user($dt, string $tz, string $fmt): array {
+  $d = dt_in_tz($dt, $tz);
+  // Texto visible: "25 Sep 2025, 2:45 PM" / "25 Sep 2025, 14:45"
+  $datePart = $d->format('d M Y');
+  $timePart = fmt_time_for_user($d, $fmt);
+  $visible  = $datePart . ', ' . $timePart;
+  // Timestamp ISO para JS (ordenar/filtrar robusto)
+  $iso = $d->format('c'); // 2025-09-25T14:45:00-05:00
+  return [$visible, $iso];
+}
+
+// ================= Datos =================
+// Moneda
 $stmt = $pdo->prepare('SELECT currency_pref FROM users WHERE id = ?');
 $stmt->execute([$_SESSION['user_id']]);
 $currency = $stmt->fetchColumn() ?: 'S/.';
@@ -12,7 +53,7 @@ $currency = $stmt->fetchColumn() ?: 'S/.';
 // últimos 3 productos
 $stmt = $pdo->prepare('SELECT * FROM products WHERE user_id = :user_id ORDER BY id DESC LIMIT 3');
 $stmt->execute(['user_id' => $_SESSION['user_id']]);
-$products = $stmt->fetchAll();
+$products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // ventas recientes (subí a 100 para que funcione la paginación en cliente)
 $stmt = $pdo->prepare('
@@ -24,9 +65,9 @@ $stmt = $pdo->prepare('
     LIMIT 100
 ');
 $stmt->execute(['user_id' => $_SESSION['user_id']]);
-$recentSales = $stmt->fetchAll();
+$recentSales = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// total ventas del mes actual
+// total ventas del mes actual (consulta sigue igual)
 $stmt = $pdo->prepare('
     SELECT COALESCE(SUM(total),0) as total_mes 
     FROM sales 
@@ -51,7 +92,7 @@ $totalMes = $stmt->fetchColumn();
   <style>
     :root{
       --bg:#f8fafc;
-      --bg-contrast:#e9eef5; /* NUEVO: fondo general más contrastado */
+      --bg-contrast:#e9eef5;
       --panel:#ffffff;
       --panel-2:#f2f5f9;
       --text:#0f172a;
@@ -69,13 +110,11 @@ $totalMes = $stmt->fetchColumn();
     body.home{
       margin:0;
       font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      /* ANTES: gradiente claro; AHORA: color sólido con más contraste */
       background: var(--bg-contrast);
       color:var(--text);
     }
     a{color:inherit;text-decoration:none}
 
-    /* Toggle oscuro (mismo id) */
     #darkToggle{
       position: fixed; right: 20px; bottom: 20px; z-index: 9999;
       background: linear-gradient(135deg,var(--primary),var(--primary-2));
@@ -87,7 +126,6 @@ $totalMes = $stmt->fetchColumn();
     .page{ padding:24px 18px 64px; }
     .container{
       max-width:1200px; margin:0 auto;
-      /* Panel principal sobre fondo contrastado */
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -95,7 +133,6 @@ $totalMes = $stmt->fetchColumn();
       padding: 16px;
     }
 
-    /* Hero */
     .hero{
       display:flex; align-items:center; justify-content:space-between; gap:16px; margin:4px 0 4px;
     }
@@ -105,12 +142,11 @@ $totalMes = $stmt->fetchColumn();
     .hero .subtitle{ font-size:13px; color:var(--muted); margin-top:4px; }
     .cta-row{ display:flex; gap:10px; flex-wrap:wrap; }
 
-    /* BOTONES: más contraste para los no-primarios */
     .btn{
       padding:10px 14px; border-radius:12px;
-      border:1px solid #cfd7e3;                /* borde más visible */
-      background: var(--panel-2);               /* ANTES #fff: ahora tiene tinte */
-      color: var(--text);                       /* forzamos texto oscuro */
+      border:1px solid #cfd7e3;
+      background: var(--panel-2);
+      color: var(--text);
       box-shadow:var(--shadow); font-weight:700;
       transition: transform .15s ease, background .15s ease, border-color .15s ease;
     }
@@ -122,14 +158,12 @@ $totalMes = $stmt->fetchColumn();
     }
     .btn.primary:hover{ filter: brightness(0.98); }
 
-    /* KPIs */
     .stats{ display:grid; grid-template-columns:repeat(3, minmax(220px,1fr)); gap:14px; margin:16px 0 22px; }
     .stat-card{ background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); display:flex; gap:12px; align-items:center; }
     .stat-icon{ width:42px;height:42px;border-radius:10px; display:grid; place-items:center; background:linear-gradient(135deg,#e8f1ff,#f3f8ff); border:1px solid #e5eaff; }
     .stat-meta{ font-size:12px; color:var(--muted); }
     .stat-value{ font-weight:800; font-size:20px; margin-top:2px; }
 
-    /* Secciones */
     .section{ margin-top:18px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
     .section-header{ padding:14px 16px; border-bottom:1px solid var(--border); background:linear-gradient(180deg,#ffffff,#f7fafc); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
     .section-title{ font-size:14px; font-weight:800; }
@@ -139,7 +173,6 @@ $totalMes = $stmt->fetchColumn();
     .pill input, .pill select{ border:none; outline:none; background:transparent; color:inherit; min-width:120px; }
     .pill .icon{ opacity:.7 }
 
-    /* Tablas */
     table{ width:100%; border-collapse:separate; border-spacing:0; }
     thead th{ font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:#475569; padding:14px 16px; background:#f8fafc; border-bottom:1px solid var(--border); text-align:left; user-select:none; cursor:pointer; }
     thead th[data-sortable="false"]{ cursor:default; }
@@ -148,7 +181,6 @@ $totalMes = $stmt->fetchColumn();
     tbody tr:hover{ background:#f1f5f9 }
     .low-stock{ color:#dc2626; font-weight:800; }
 
-    /* Botón eliminar (ventas) */
     .delete-btn{
       background:linear-gradient(135deg,#ef4444,#f87171);
       color:#fff !important; padding:8px 12px; border-radius:10px; font-weight:700; font-size:13px;
@@ -156,12 +188,10 @@ $totalMes = $stmt->fetchColumn();
     }
     .delete-btn:hover{ transform:translateY(-1px); box-shadow:0 10px 20px rgba(239,68,68,.22); }
 
-    /* Paginación */
     .pagination{ display:flex; align-items:center; gap:8px; padding:12px 16px; }
     .pagination .btn{ padding:8px 10px; }
     .spacer{flex:1}
 
-    /* Notificación */
     #notification{
       position: fixed; left:50%; bottom: 24px; transform: translateX(-50%);
       background:#ecfdf5; border:1px solid #d1fae5; color:#065f46;
@@ -170,8 +200,7 @@ $totalMes = $stmt->fetchColumn();
     }
     #notification.show{ opacity:1; pointer-events:auto; }
 
-    /* Modo oscuro */
-    body.dark{ background:#0c1326; } /* más oscuro para mantener contraste con panel blanco */
+    body.dark{ background:#0c1326; }
     body.dark .container{ background:#0b1220; border-color:#1f2a4a; }
     body.dark .section, body.dark .stat-card{ background:#0b1220; border-color:#1f2a4a; }
     body.dark .section-header{ background:#0e1630; }
@@ -194,12 +223,17 @@ $totalMes = $stmt->fetchColumn();
       <div class="hero">
         <div class="hero-left">
           <div class="icon">
-            <!-- carrito SVG -->
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6 6h15l-1.5 9h-12L5 3H2" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1" fill="#2563eb"/><circle cx="18" cy="20" r="1" fill="#2563eb"/></svg>
           </div>
           <div>
             <h1>Panel de control</h1>
-            <div class="subtitle">Resumen de tu actividad y accesos rápidos.</div>
+            <div class="subtitle">
+              Resumen de tu actividad y accesos rápidos.
+              <!-- chip con TZ y formato -->
+              <span style="margin-left:8px; font-weight:700; font-size:12px; color:#2563eb; background:#e6f0ff; padding:4px 8px; border-radius:999px;">
+                <?= htmlspecialchars($user_tz) ?> · <?= htmlspecialchars(strtoupper($time_fmt)) ?>
+              </span>
+            </div>
           </div>
         </div>
         <div class="cta-row">
@@ -268,6 +302,10 @@ $totalMes = $stmt->fetchColumn();
             </thead>
             <tbody id="productsBody">
             <?php foreach ($products as $p): ?>
+              <?php
+                // Si created_at está en UTC en DB:
+                [$pCreatedText, $pCreatedISO] = fmt_datetime_for_user($p['created_at'] ?? 'now', $user_tz, $time_fmt);
+              ?>
               <tr>
                 <td><?= $p['id'] ?></td>
                 <td><?= htmlspecialchars($p['code'] ?? '') ?></td>
@@ -283,7 +321,7 @@ $totalMes = $stmt->fetchColumn();
                     <?= (int)$p['stock'] ?>
                   <?php endif; ?>
                 </td>
-                <td><?= htmlspecialchars($p['created_at'] ?? '') ?></td>
+                <td data-ts="<?= htmlspecialchars($pCreatedISO) ?>"><?= htmlspecialchars($pCreatedText) ?></td>
               </tr>
             <?php endforeach; ?>
             </tbody>
@@ -343,6 +381,9 @@ $totalMes = $stmt->fetchColumn();
             </thead>
             <tbody id="salesBody">
             <?php foreach ($recentSales as $s): ?>
+              <?php
+                [$saleText, $saleISO] = fmt_datetime_for_user($s['sale_date'] ?? 'now', $user_tz, $time_fmt);
+              ?>
               <tr>
                 <td><?= $s['id'] ?></td>
                 <td><?= htmlspecialchars($s['product_name'] ?? '') ?></td>
@@ -351,7 +392,7 @@ $totalMes = $stmt->fetchColumn();
                 <td><?= (int)$s['quantity'] ?></td>
                 <td><?= $currency . ' ' . number_format($s['unit_price'], 2) ?></td>
                 <td><?= $currency . ' ' . number_format($s['total'], 2) ?></td>
-                <td><?= htmlspecialchars($s['sale_date'] ?? '') ?></td>
+                <td data-ts="<?= htmlspecialchars($saleISO) ?>"><?= htmlspecialchars($saleText) ?></td>
                 <td>
                   <a href="delete_sale.php?id=<?= $s['id'] ?>" class="delete-btn"
                      onclick="return confirm('¿Seguro que deseas eliminar esta venta?');">
@@ -401,13 +442,15 @@ $totalMes = $stmt->fetchColumn();
       showNotification("<?= addslashes($_GET['msg']) ?>");
     <?php endif; ?>
 
-    // Utilidades
+    // Utils
     const parseMoney = (txt) => {
       const num = String(txt).replace(/[^0-9.,-]/g,'').replace(/\./g,'').replace(/,/g,'.');
       return parseFloat(num) || 0;
     };
-    const parseDate = (txt) => {
-      const t = Date.parse(txt);
+    const parseDate = (txtOrISO, el) => {
+      // Si el TD trae data-ts (ISO), úsalo; si no, intenta parsear el texto
+      const iso = el?.dataset?.ts || txtOrISO;
+      const t = Date.parse(iso);
       return isNaN(t) ? NaN : t;
     };
 
@@ -423,7 +466,7 @@ $totalMes = $stmt->fetchColumn();
       });
     });
 
-    // Ordenamiento genérico
+    // Ordenamiento genérico (ahora usa data-ts si está)
     function enableSorting(tableId){
       const table = document.getElementById(tableId);
       const thead = table.tHead;
@@ -436,13 +479,21 @@ $totalMes = $stmt->fetchColumn();
         th.addEventListener('click', () => {
           const rows = [...tbody.rows];
           rows.sort((a, b) => {
+            const Ael = a.children[idx];
+            const Bel = b.children[idx];
             const A = getCellValue(a, idx);
             const B = getCellValue(b, idx);
+
+            // Números (dinero)
             const aNum = parseFloat(A.replace(/[^0-9.,-]/g,'').replace(/\./g,'').replace(/,/g,'.'));
             const bNum = parseFloat(B.replace(/[^0-9.,-]/g,'').replace(/\./g,'').replace(/,/g,'.'));
             if (!isNaN(aNum) && !isNaN(bNum)) return asc ? aNum - bNum : bNum - aNum;
-            const aDate = Date.parse(A), bDate = Date.parse(B);
+
+            // Fechas (preferir data-ts)
+            const aDate = parseDate(A, Ael), bDate = parseDate(B, Bel);
             if (!isNaN(aDate) && !isNaN(bDate)) return asc ? aDate - bDate : bDate - aDate;
+
+            // Texto
             return asc ? A.localeCompare(B) : B.localeCompare(A);
           });
           rows.forEach(r => tbody.appendChild(r));
@@ -486,8 +537,10 @@ $totalMes = $stmt->fetchColumn();
         const totalTxt = tds[6].textContent;
         const totalVal = parseMoney(totalTxt);
         const totalHit = (isNaN(min) || totalVal >= min) && (isNaN(max) || totalVal <= max);
-        const dateTxt = tds[7].textContent.trim();
-        const ts = parseDate(dateTxt);
+
+        const dateTd = tds[7];
+        const dateTxt = dateTd.textContent.trim();
+        const ts = parseDate(dateTxt, dateTd);
         const dateHit = (fromTs === Number.NEGATIVE_INFINITY) || (!isNaN(ts) && ts >= fromTs);
         return textHit && totalHit && dateHit;
       });

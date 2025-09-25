@@ -74,6 +74,8 @@
   font-size: 23px;
   cursor: pointer;
   transition: all 0.5s ease;
+  z-index: 100;         /* <- asegura que quede por encima */
+  pointer-events: auto; /* <- siempre clickeable */
 }
 .sidebar i{
   color: #fff;
@@ -178,12 +180,14 @@
   font-size: 18px;
   border-radius: 12px;
 }
+
+/* ===== Footer perfil (rediseñado) ===== */
 .sidebar li.profile{
   position: fixed;
-  height: 60px;
+  height: auto;          /* permitir crecer */
   width: 78px;
   left: 0;
-  bottom: -8px;
+  bottom: 0;             /* fijo al fondo */
   padding: 10px 14px;
   background: #1d1b31;
   transition: all 0.5s ease;
@@ -191,25 +195,32 @@
 }
 .sidebar.open li.profile{ width: 250px; }
 .sidebar li .profile-details{
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
+  display: flex; align-items: center; gap: 10px; min-height: 48px;
 }
-.sidebar li img{
-  height: 45px;
-  width: 45px;
-  object-fit: cover;
-  border-radius: 6px;
-  margin-right: 10px;
+.profile-avatar{
+  width: 44px; height: 44px; border-radius: 10px;
+  background: linear-gradient(135deg,#202040,#2a2850);
+  display: grid; place-items: center;
+  border: 1px solid rgba(255,255,255,.12);
+  flex: 0 0 44px;
 }
-.sidebar li.profile .name,
-.sidebar li.profile .job{
-  font-size: 15px;
-  font-weight: 400;
-  color: #fff;
-  white-space: nowrap;
+.profile-avatar svg{ width: 26px; height: 26px; opacity: .95; }
+.profile-texts{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+.profile-name{
+  color:#fff; font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.sidebar li.profile .job{ font-size: 12px; }
+.profile-meta{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.meta-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(255,255,255,.08); color:#e5e7eb; border:1px solid rgba(255,255,255,.18);
+  padding:2px 8px; border-radius:999px; font-size:11px; line-height:1.6;
+}
+.meta-chip .dot{ width:6px; height:6px; border-radius:999px; background:#60a5fa; opacity:.9; }
+.meta-chip.tz .dot{ background:#34d399; }
+
+/* Oculta textos cuando está cerrado */
+.sidebar:not(.open) .profile-texts{ display:none; }
+
 .sidebar .profile #log_out{
   position: absolute;
   top: 50%;
@@ -309,27 +320,27 @@
       <span class="tooltip">Ajustes</span>
     </li>
 
+    <!-- ===== Footer usuario (sin rol) ===== -->
     <li class="profile">
       <div class="profile-details">
-        <img src="iconos/user.png" alt="Imagen de perfil">
-        <div class="name_job">
-          <div class="name">
-            <?php 
-            echo isset($_SESSION['full_name']) && $_SESSION['full_name'] != '' 
-                 ? htmlspecialchars($_SESSION['full_name']) 
-                 : (isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'Usuario'); 
-            ?>
+        <div class="profile-avatar" aria-hidden="true">
+          <!-- Avatar genérico SVG -->
+          <svg viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="8" r="4.5" stroke="#9fb6ff" stroke-width="1.5"/>
+            <path d="M4.5 19.2c1.8-3.2 5-5.2 7.5-5.2s5.7 2 7.5 5.2" stroke="#9fb6ff" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="profile-texts">
+          <div class="profile-name" title="<?= htmlspecialchars($_SESSION['full_name'] ?? $_SESSION['username'] ?? 'Usuario') ?>">
+            <?= htmlspecialchars($_SESSION['full_name'] ?? $_SESSION['username'] ?? 'Usuario') ?>
           </div>
-          <div class="job">
-            <?php 
-            echo isset($_SESSION['role']) && $_SESSION['role'] != '' 
-                 ? htmlspecialchars($_SESSION['role']) 
-                 : 'Invitado'; 
-            ?>
+          <div class="profile-meta">
+            <span class="meta-chip cur" title="Moneda"><span class="dot"></span><?= htmlspecialchars($_SESSION['currency_pref'] ?? 'S/.') ?></span>
+            <span class="meta-chip tz" title="Zona horaria"><span class="dot"></span><?= htmlspecialchars($_SESSION['timezone'] ?? 'America/New_York') ?></span>
           </div>
         </div>
       </div>
-      <a href="logout.php" id="log_out"><i class="bx bx-log-out"></i></a>
+      <a href="logout.php" id="log_out" title="Cerrar sesión"><i class="bx bx-log-out"></i></a>
     </li>
   </ul>
 </div>

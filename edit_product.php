@@ -2,7 +2,7 @@
 require 'db.php';
 require 'auth.php'; // requiere iniciar sesion
 
-include 'header.php';
+
 
 $id = intval($_GET['id'] ?? 0);
 $product = $pdo->prepare("SELECT * FROM products WHERE id=?");

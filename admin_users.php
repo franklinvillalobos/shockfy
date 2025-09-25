@@ -2,7 +2,7 @@
 require 'db.php';
 require 'auth.php';
 
-include 'header.php';
+
 
 // Verificar que el usuario logueado sea admin
 $user_id = $_SESSION['user_id'];

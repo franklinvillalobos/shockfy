@@ -1,9 +1,9 @@
 <?php
 // db.php
-$host = 'others_shockfy_db';
+$host = '127.0.0.1';
 $db   = 'brixventas_db';
-$user = 'shock_fy';
-$pass = 'brixventas_db'; // si tienes contraseña en root, ponla aquí
+$user = 'root';
+$pass = ''; // si tienes contraseña en root, ponla aquí
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";

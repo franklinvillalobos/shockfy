@@ -242,7 +242,7 @@
         </div>
       </div>
       <div class="hero-art">
-        <img class="hero-screenshot" src="assets/img/imagen1.png" alt="Vista del dashboard de ShockFy">
+        <img class="hero-screenshot" src="assets/img/imagen2.png" alt="Vista del dashboard de ShockFy">
       </div>
     </div>
   </section>
@@ -254,7 +254,7 @@
       <p class="lead">Herramientas pensadas para simplificar tu operación y ayudarte a vender más.</p>
 
       <div class="feature-image-container">
-        <img src="assets/img/imagen1.png" class="feature-image" alt="ShockFy interfaz" />
+        <img src="assets/img/imagen2.png" class="feature-image" alt="ShockFy interfaz" />
       </div>
 
       <div class="features-four-col">

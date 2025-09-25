@@ -3,7 +3,7 @@
 require 'db.php';
 require 'auth.php'; // requiere iniciar sesion
 
-include 'header.php';
+
 
 if (!empty($_GET['id'])) {
     $id = intval($_GET['id']);

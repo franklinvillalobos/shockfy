@@ -1,7 +1,7 @@
 <?php
 require 'db.php';
 require 'auth.php';
-include 'header.php';
+
 
 // Obtener la preferencia de moneda del usuario
 $stmt = $pdo->prepare("SELECT currency_pref FROM users WHERE id=?");
@@ -40,6 +40,8 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <!doctype html>
 <html lang="es">
 <head>
+   <link rel="icon" href="assets/img/favicon.png" type="image/png">
+    <link rel="shortcut icon" href="assets/img/favicon.png" type="image/png">
   <meta charset="utf-8">
   <title>Productos</title>
   <style>

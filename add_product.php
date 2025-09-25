@@ -4,7 +4,7 @@ require 'db.php';
 require 'auth.php'; // requiere iniciar sesion
 $user_id = $_SESSION['user_id']; // el ID del usuario que está logueado
 
-include 'header.php';
+
 
 // Traer todas las categorías
 $categories = $pdo->prepare("SELECT id, name FROM categories WHERE user_id = ? ORDER BY name");
