@@ -1,6 +1,6 @@
-// js/script.js
+// js/script.js — Persistencia + sin buscador
 (function () {
-  // Corre cuando el DOM esté listo (por si el script se incluye en <head>)
+  // Asegurar ejecución post-DOM (por si el script está en <head>)
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
@@ -8,13 +8,22 @@
   }
 
   function init() {
-    const sidebar   = document.querySelector('.sidebar');
-    const closeBtn  = document.querySelector('.sidebar .logo-details #btn'); // específico
-    const searchBtn = document.querySelector('.sidebar .bx-search');
-    const searchInp = document.querySelector('.sidebar input[type="text"]');
+    const sidebar  = document.querySelector('.sidebar');
+    const closeBtn = document.querySelector('.sidebar .logo-details #btn'); // selector específico
 
-    if (!sidebar || !closeBtn) return; // nada que hacer
+    if (!sidebar || !closeBtn) return;
 
+    // 1) Leer estado persistido
+    try {
+      const saved = localStorage.getItem('sidebarOpen');
+      if (saved === 'true') {
+        sidebar.classList.add('open');
+      } else if (saved === 'false') {
+        sidebar.classList.remove('open');
+      }
+    } catch (e) { /* no-op */ }
+
+    // 2) Actualizar icono según estado actual
     function updateMenuIcon() {
       const isOpen = sidebar.classList.contains('open');
       if (isOpen) {
@@ -27,20 +36,20 @@
         }
       }
     }
+    updateMenuIcon();
 
+    // 3) Guardar estado
+    function persist() {
+      try { localStorage.setItem('sidebarOpen', String(sidebar.classList.contains('open'))); } catch (e) {}
+    }
+
+    // 4) Toggle handlers
     function toggleSidebar() {
       sidebar.classList.toggle('open');
       updateMenuIcon();
+      persist();
     }
 
-    function openSidebar() {
-      if (!sidebar.classList.contains('open')) {
-        sidebar.classList.add('open');
-        updateMenuIcon();
-      }
-    }
-
-    // Click en el botón menú
     closeBtn.addEventListener('click', function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -56,16 +65,5 @@
         toggleSidebar();
       }
     });
-
-    // Lupa: siempre abre y enfoca (no togglea)
-    if (searchBtn) {
-      searchBtn.addEventListener('click', function () {
-        openSidebar();
-        if (searchInp) setTimeout(() => searchInp.focus(), 60);
-      });
-    }
-
-    // Sincroniza icono con estado inicial
-    updateMenuIcon();
   }
 })();

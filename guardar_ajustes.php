@@ -9,6 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $currency_pref = $_POST['currency_pref'] ?? 'S/.';
     $timezone      = trim($_POST['timezone'] ?? 'America/New_York');
     $time_format   = ($_POST['time_format'] ?? '12h');
+    $remove_avatar = isset($_POST['remove_avatar']) && $_POST['remove_avatar'] === '1';
 
     if (!$user_id) {
         $_SESSION['ajustes_error'] = "Sesión inválida. Inicia sesión nuevamente.";
@@ -87,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        // Actualizar la base de datos
+        // ===== 1) Actualizar datos básicos en BD =====
         $stmt = $pdo->prepare("
             UPDATE users
                SET full_name     = :full_name,
@@ -104,15 +105,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':id'            => $user_id
         ]);
 
-        // Refrescar datos en sesión (si los usas en la UI)
+        // ===== 2) Actualizar sesión (UI inmediata) =====
         $_SESSION['full_name']     = $full_name;
         $_SESSION['currency_pref'] = $currency_pref;
         $_SESSION['timezone']      = $timezone;
         $_SESSION['time_format']   = $time_format;
 
+        // ===== 3) Manejo de avatar (opcional) =====
+        // Requiere que el form tenga enctype="multipart/form-data" y el input: <input type="file" name="avatar" ...>
+        $uploadDir = __DIR__ . '/uploads/avatars';
+        if (!is_dir($uploadDir)) { @mkdir($uploadDir, 0775, true); }
+
+        // Función para borrar archivos existentes del usuario (cualquier extensión soportada)
+        $existing = glob($uploadDir . "/{$user_id}.*");
+        $deleteExisting = function() use ($existing) {
+            foreach ($existing as $f) { @unlink($f); }
+        };
+
+        // Si pidió quitar avatar explícitamente
+        if ($remove_avatar) {
+            $deleteExisting();
+        }
+
+        // Si subió un archivo nuevo
+        if (!empty($_FILES['avatar']['name'])) {
+            if ($_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
+                $tmp  = $_FILES['avatar']['tmp_name'];
+                $info = @getimagesize($tmp);
+                if ($info === false) {
+                    $_SESSION['ajustes_error'] = "El archivo subido no es una imagen válida.";
+                    header("Location: ajustes.php"); exit;
+                }
+                $mime = $info['mime'];
+                if (!in_array($mime, ['image/jpeg','image/png','image/webp'], true)) {
+                    $_SESSION['ajustes_error'] = "Formato no permitido. Usa JPG, PNG o WEBP.";
+                    header("Location: ajustes.php"); exit;
+                }
+                if (filesize($tmp) > 2 * 1024 * 1024) { // 2MB
+                    $_SESSION['ajustes_error'] = "La imagen supera el límite de 2MB.";
+                    header("Location: ajustes.php"); exit;
+                }
+
+                // Borrar anteriores y guardar con nueva extensión
+                $deleteExisting();
+                $ext = ($mime === 'image/png') ? 'png' : (($mime === 'image/webp') ? 'webp' : 'jpg');
+                $dest = "{$uploadDir}/{$user_id}.{$ext}";
+
+                if (!@move_uploaded_file($tmp, $dest)) {
+                    $_SESSION['ajustes_error'] = "No se pudo guardar la imagen.";
+                    header("Location: ajustes.php"); exit;
+                }
+                @chmod($dest, 0644);
+            } else {
+                // Error de subida conocido
+                $code = (int)$_FILES['avatar']['error'];
+                $_SESSION['ajustes_error'] = "Error al subir la imagen (código {$code}).";
+                header("Location: ajustes.php"); exit;
+            }
+        }
+
         $_SESSION['ajustes_success'] = "Tus cambios se han guardado correctamente.";
     } catch (Throwable $e) {
-        // Puedes loguear $e->getMessage() en un archivo seguro para debug
+        // Puedes loguear $e->getMessage() para diagnóstico
         $_SESSION['ajustes_error'] = "No se pudieron guardar los ajustes. Intenta de nuevo.";
     }
 
