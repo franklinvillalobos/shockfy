@@ -8,13 +8,12 @@ if (isset($_SESSION['user_id'])) {
 }
 
 require 'db.php';
-// include 'header.php';
 
 $error = '';
 $account_disabled = false;
 $disabled_user_name = '';
 
-// Procesar login
+// Procesar login 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
     $password = $_POST['password'];
@@ -24,14 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
-        if ($user['status'] == 0) {
+        if ((int)$user['status'] === 0) {
             // Usuario desactivado
             $account_disabled = true;
             $disabled_user_name = $user['full_name'];
         } else {
             // Usuario activo, iniciar sesión
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['role'] = $user['role'];
+            $_SESSION['user_id']   = $user['id'];
+            $_SESSION['role']      = $user['role'];
             $_SESSION['full_name'] = $user['full_name'];
             header('Location: index.php');
             exit;
@@ -41,320 +40,304 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Login - StockFy</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif;
-        }
+  <meta charset="UTF-8">
+  <title>ShockFy — Iniciar sesión</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Favicon -->
+  <link rel="icon" href="assets/img/favicon.png" type="image/png">
+  <link rel="shortcut icon" href="assets/img/favicon.png" type="image/png">
+  <!-- Fuente -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg-1:#0b2cff0d;
+      --bg-2:#eaf0ff;
+      --text:#0b1220;
+      --muted:#475569;
+      --primary:#2344ec;
+      --primary-2:#5ea4ff;
+      --danger:#dc2626;
+      --ok:#16a34a;
+      --panel:#ffffff;
+      --border:#e5e7eb;
+      --shadow:0 18px 40px rgba(2,6,23,.18);
+      --radius:20px;
+      --max:1120px;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--text)}
+    body{
+      min-height:100dvh;
+      background:
+        radial-gradient(900px 700px at -10% -20%, #e3e9ff 0%, transparent 60%),
+        radial-gradient(900px 700px at 110% -20%, #edf3ff 0%, transparent 60%),
+        linear-gradient(180deg, #f7f9ff, #eef2ff);
+      display:flex;flex-direction:column;
+    }
+    /* NAV */
+    nav{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.78);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+    .nav-container{max-width:var(--max);margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
+    .logo{font-weight:800;letter-spacing:.2px;display:flex;align-items:center;gap:10px}
+    .logo img{height:34px}
+    .nav-links{display:flex;gap:12px;align-items:center}
+    .nav-links a{padding:10px 12px;border-radius:10px;font-weight:600;color:#0f172a;text-decoration:none}
+    .nav-links a:hover{background:#eef2ff}
+    .cta{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff !important;padding:10px 16px;border-radius:12px;border:1px solid #cfe0ff;box-shadow:var(--shadow)}
+    .login-btn{background:#fff !important;color:var(--text) !important;border:1px solid var(--border)}
+    .login-btn:hover{background:#f8fafc}
+    .mobile-toggle{display:none}
 
-        html,
-        body {
-            height: 100%;
-        }
+    /* LAYOUT */
+    .wrap{max-width:var(--max);margin:0 auto;padding:26px 18px 48px;flex:1;display:grid;grid-template-columns:1.1fr .9fr;gap:32px;align-items:center}
+    @media (max-width:980px){.wrap{grid-template-columns:1fr}}
 
-        /* Fondo gradiente azul + blanco suave */
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(135deg, #4742e3, #4c57e9);
-            overflow: hidden;
-        }
+    /* LADO IZQ: COPY */
+    .intro h1{font-size:36px;line-height:1.08;margin:0 0 12px;font-weight:800;color:#0b2cff}
+    .intro p{color:var(--muted);max-width:620px;margin:0 0 16px}
+    .intro-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+    .btn-ghost{
+      padding:12px 16px;border-radius:12px;border:1px solid #cfe0ff;
+      background:#fff;color:var(--primary);font-weight:800;text-decoration:none;
+      box-shadow:0 6px 16px rgba(35,68,236,.10);
+    }
+    .btn-ghost:hover{background:#f8faff}
 
-        /* Caja login */
-        .login-box {
-            background: #f7f7f7;
-            padding: 50px 35px 35px 35px;
-            border-radius: 14px;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, .2);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-            position: relative;
-            color: #1a1a2e;
-            transform: translateY(-50px);
-            opacity: 0;
-            animation: fadeSlide 0.8s forwards;
-        }
+    .points{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:560px;margin-top:14px}
+    .point{display:flex;align-items:center;gap:8px;color:#0f172a}
+    .point .ic{color:var(--ok);width:18px;height:18px}
 
-        /* Animación de entrada */
-        @keyframes fadeSlide {
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
+    /* CARD LOGIN (agrandada) */
+    .card{
+      background:linear-gradient(180deg,#ffffff,#f7faff);
+      border:1px solid #dbe4ff;border-radius:var(--radius);box-shadow:var(--shadow);
+      padding:28px 24px;max-width:560px;margin:0 0 0 auto;
+    }
+    @media (max-width:980px){.card{margin:0 auto}}
+    .card-top{
+      display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:12px
+    }
+    .brand-circle{
+      width:72px;height:72px;border-radius:50%;display:grid;place-items:center;
+      background:linear-gradient(135deg,#e8efff,#f3f7ff);border:1px solid #d6e1ff;
+    }
+    .brand-circle img{width:40px;height:40px;object-fit:contain}
+    .card h2{margin:0;font-weight:800;font-size:24px}
+    .sub{color:var(--muted);font-size:13px;margin:6px 0 12px}
 
-        /* Logo animado */
-        .login-box .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 20px auto;
-            background: linear-gradient(135deg, #4742e3, #4c57e9);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            font-weight: bold;
-            color: #fff;
-            animation: logoBounce 1s infinite alternate;
-        }
+    .create-inline{
+      padding:10px 12px;border-radius:10px;border:1px solid #cfe0ff;
+      color:var(--primary);text-decoration:none;font-weight:800;background:#fff;
+      box-shadow:0 6px 16px rgba(35,68,236,.10);
+    }
+    .create-inline:hover{background:#f8faff}
 
-        @keyframes logoBounce {
-            0% {
-                transform: translateY(0);
-            }
+    .alert{display:none;margin:0 auto 12px;background:#fee2e2;border:1px solid #fecaca;color:#7f1d1d;padding:10px 12px;border-radius:12px;font-weight:600;text-align:center}
+    .alert.show{display:block}
+    .alert.ok{background:#ecfdf5;border-color:#d1fae5;color:#065f46}
 
-            100% {
-                transform: translateY(-10px);
-            }
-        }
+    .field{margin:12px 0 14px}
+    .label{font-size:13px;font-weight:700;margin-bottom:6px}
+    .input-wrap{
+      position:relative;border:1px solid #dbe4ff;background:#fff;border-radius:12px;display:flex;align-items:center;padding:10px 14px;
+    }
+    .input-wrap:focus-within{box-shadow:0 0 0 3px rgba(35,68,236,.15)}
+    input[type="text"],input[type="password"]{
+      border:none;outline:none;background:transparent;width:100%;font-size:16px;color:#0f172a;
+    }
+    .eye-btn{
+      background:transparent;border:0;cursor:pointer;display:grid;place-items:center;
+      width:36px;height:36px;border-radius:8px;color:#64748b;
+    }
+    .eye-btn:hover{background:#f1f5ff}
+    .btn{
+      width:100%;padding:14px;border-radius:12px;border:1px solid #cfe0ff;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff;font-weight:800;cursor:pointer;
+      box-shadow:0 12px 28px rgba(35,68,236,.18);transition:transform .15s ease, filter .2s ease;
+      font-size:16px;
+    }
+    .btn:hover{filter:brightness(.95);transform:translateY(-1px)}
+    .helpers{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+    .forgot{color:var(--primary);font-weight:700;font-size:13px}
+    .forgot:hover{text-decoration:underline}
 
-        /* Título */
-        .login-box h2 {
-            margin-bottom: 30px;
-            font-size: 26px;
-            font-weight: 700;
-            color: #1a1a2e;
-        }
+    /* FOOTER MINI */
+    .foot{padding:12px 18px;border-top:1px solid var(--border);background:#fff;color:var(--muted);font-size:13px}
+    .foot-inner{max-width:var(--max);margin:0 auto;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
-        /* Input Group */
-        .input-group {
-            position: relative;
-            margin-bottom: 20px;
-        }
+/* Quitar subrayado del Crearse una cuenta */
+a.cta,
+a.cta:link,
+a.cta:visited,
+a.cta:hover,
+a.cta:focus,
+a.cta:active {
+  text-decoration: none;
+}
 
-        .input-group input {
-            width: 100%;
-            padding: 12px 45px 12px 15px;
-            border-radius: 8px;
-            border: none;
-            font-size: 15px;
-            outline: none;
-            background: #e8e8e8;
-            color: #1a1a2e;
-            transition: 0.3s;
-        }
+/* Mejor clic y alineación */
+a.cta {
+  display: inline-block; 
+}
 
-        .input-group input:focus {
-            background: #fff;
-            box-shadow: 0 0 8px #4742e3;
-            border: 1px solid #4742e3;
-        }
 
-        .input-group i {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            cursor: pointer;
-            color: #888;
-            font-size: 18px;
-            transition: 0.3s, transform 0.3s;
-        }
 
-        .input-group input:focus+i {
-            color: #4742e3;
-            transform: translateY(-5px);
-        }
-
-        /* Botón */
-        .login-box button {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #4742e3, #4c57e9);
-            border: none;
-            border-radius: 8px;
-            color: #fff;
-            font-size: 16px;
-            cursor: pointer;
-            transition: 0.4s;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, .2);
-        }
-
-        .login-box button:hover {
-            background: linear-gradient(135deg, #3b36c8, #3f47e0);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, .3);
-        }
-
-        /* Links */
-        .login-box .forgot {
-            display: block;
-            margin-top: 15px;
-            font-size: 14px;
-            color: #4742e3;
-            text-decoration: none;
-        }
-
-        .login-box .forgot:hover {
-            text-decoration: underline;
-        }
-
-        /* Toast */
-        .toast {
-            position: absolute;
-            top: -60px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #e74c3c;
-            color: #fff;
-            padding: 10px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, .2);
-            display: none;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 100;
-            transition: 0.3s;
-        }
-
-        /* Modal Usuario Desactivado */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 10000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-
-        .modal-content {
-            background: #fff;
-            margin: 100px auto;
-            padding: 30px;
-            border-radius: 12px;
-            width: 400px;
-            position: relative;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, .3);
-            text-align: center;
-        }
-
-        .modal-content h3 {
-            margin-top: 0;
-            color: #333;
-        }
-
-        .modal-content p {
-            color: #555;
-            margin: 10px 0;
-        }
-
-        .modal-content .close {
-            color: #aaa;
-            position: absolute;
-            right: 15px;
-            top: 10px;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .modal-content .close:hover {
-            color: #000;
-        }
-
-        /* Responsive */
-        @media(max-width:450px) {
-            .login-box {
-                padding: 40px 20px;
-            }
-
-            .login-box .logo {
-                width: 60px;
-                height: 60px;
-                font-size: 24px;
-            }
-        }
-    </style>
+  </style>
 </head>
-
 <body>
 
-    <div class="login-box">
-        <div class="logo">💼</div>
-        <h2>StockFy</h2>
+  <!-- NAVEGACION (MENU) -->
+  <nav>
+    <div class="nav-container">
+      <div class="logo">
+        <img src="assets/img/icono_menu.png" alt="ShockFy">
+        ShockFy
+      </div>
+      <div class="nav-links">
+        <a href="home.php#features">Características</a>
+        <a href="home.php#how">Cómo funciona</a>
+        <a href="home.php#pricing">Precio</a>
+        <a href="signup.php" class="cta">Pruébalo gratis</a>
+        <a href="login.php" class="login-btn">Iniciar sesión</a>
+      </div>
+      <button class="mobile-toggle" aria-label="Abrir menú"><span></span></button>
+    </div>
+  </nav>
 
-        <!-- Toast para errores -->
-        <?php if ($error): ?>
-            <div class="toast" id="errorToast"><?php echo htmlspecialchars($error); ?></div>
-        <?php endif; ?>
-
-        <form method="POST" id="loginForm">
-            <div class="input-group">
-                <input type="text" name="username" placeholder="Usuario" required>
-                <i class="fas fa-user"></i>
-            </div>
-            <div class="input-group">
-                <input type="password" name="password" placeholder="Contraseña" id="passwordField" required>
-                <i class="fas fa-eye" id="togglePassword"></i>
-            </div>
-            <button type="submit">Ingresar</button>
-            <a href="#" class="forgot">¿Olvidaste tu contraseña?</a>
-        </form>
+  <!-- WRAP -->
+  <div class="wrap">
+    <!-- COPY IZQ -->
+    <div class="intro">
+      <h1>Accede a tu panel y sigue vendiendo sin fricción.</h1>
+      <p>Registra ventas en segundos, controla inventario y mira métricas clave del mes. Seguridad, sencillez y rendimiento en un mismo lugar.</p>
+      <div class="intro-cta">
+        <a class="btn-ghost" href="signup.php">Crear cuenta</a>
+        <a class="cta" href="signup.php">Pruébalo gratis 15 días</a>
+      </div>
+      <div class="points">
+        <div class="point">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+          Conexión segura (HTTPS/SSL)
+        </div>
+        <div class="point">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+          Sin complicaciones
+        </div>
+        <div class="point">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+          Soporte rápido
+        </div>
+        <div class="point">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+          Actualizaciones constantes
+        </div>
+      </div>
     </div>
 
-    <!-- Modal Usuario Desactivado -->
-    <?php if ($account_disabled): ?>
-        <div id="disabledModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeDisabledModal()">&times;</span>
-                <h3>Cuenta Desactivada</h3>
-                <p>Hola <?php echo htmlspecialchars($disabled_user_name); ?>, tu cuenta ha sido desactivada y no puedes iniciar sesión.</p>
-                <p>Por favor contacta al soporte para reactivar tu cuenta.</p>
-            </div>
+    <!-- CARD LOGIN (más grande) -->
+    <div class="card">
+      <div class="card-top">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="brand-circle">
+            <img src="assets/img/logo_circular.png" alt="Logo">
+          </div>
+          <div>
+            <h2>Iniciar sesión</h2>
+            <div class="sub">Bienvenido de vuelta</div>
+          </div>
         </div>
-    <?php endif; ?>
+        <!-- CTA secundario visible dentro de la card -->
+        <a class="create-inline" href="signup.php" title="Crear cuenta">Crear cuenta</a>
+      </div>
 
-    <script>
-        // Toast de error
-        window.onload = function() {
-            // Mostrar toast
-            let toast = document.getElementById('errorToast');
-            if (toast) {
-                toast.style.display = 'block';
-                setTimeout(() => {
-                    toast.style.display = 'none';
-                }, 3500);
-            }
+      <!-- Mensajes -->
+      <?php if ($error): ?>
+        <div class="alert show" id="errorBox"><?= htmlspecialchars($error) ?></div>
+      <?php endif; ?>
 
-            // Mostrar modal desactivado si corresponde
-            <?php if ($account_disabled): ?>
-                var modal = document.getElementById('disabledModal');
-                if (modal) {
-                    modal.style.display = 'block';
-                }
-            <?php endif; ?>
-        };
+      <?php if ($account_disabled): ?>
+        <div class="alert show" style="margin-top:8px">
+          La cuenta de <strong><?= htmlspecialchars($disabled_user_name ?: 'este usuario') ?></strong> está desactivada.
+          <br>Contáctanos para reactivarla.
+        </div>
+      <?php endif; ?>
 
-        // Mostrar/ocultar contraseña
-        const togglePassword = document.getElementById('togglePassword');
-        const passwordField = document.getElementById('passwordField');
-        togglePassword.addEventListener('click', () => {
-            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordField.setAttribute('type', type);
-            togglePassword.classList.toggle('fa-eye-slash');
-        });
+      <form method="POST" id="loginForm" novalidate>
+        <div class="field">
+          <div class="label">Usuario</div>
+          <div class="input-wrap">
+            <input type="text" name="username" placeholder="Tu usuario" required autocomplete="username">
+          </div>
+        </div>
 
-        function closeDisabledModal() {
-            document.getElementById('disabledModal').style.display = 'none';
-        }
-    </script>
+        <div class="field">
+          <div class="label">Contraseña</div>
+          <div class="input-wrap">
+            <input type="password" name="password" id="passwordField" placeholder="••••••••" required autocomplete="current-password">
+            <button class="eye-btn" type="button" id="togglePassword" aria-label="Mostrar/Ocultar contraseña" title="Mostrar/Ocultar">
+              <svg id="eyeOpen" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg id="eyeClosed" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.86 21.86 0 0 1 5.06-6.94"/>
+                <path d="M1 1l22 22"/>
+                <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.86 21.86 0 0 1-5.06 6.94"/>
+              </svg>
+            </button>
+          </div>
+        </div>
 
+        <button class="btn" type="submit">Ingresar</button>
+
+        <div class="helpers">
+          <a class="forgot" href="home.php#faq">¿Olvidaste tu contraseña?</a>
+          
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- FOOTER MINI -->
+  <div class="foot">
+    <div class="foot-inner">
+      <div>© <?= date('Y') ?> ShockFy</div>
+      <div>Privacidad · Términos</div>
+    </div>
+  </div>
+
+  <script>
+    // Mantener darkMode si lo usas en otras páginas
+    (function(){
+      if(localStorage.getItem('darkMode') === 'true'){
+        document.documentElement.classList.add('dark'); // por si luego activas estilos oscuros
+      }
+    })();
+
+    //  mostrar/ocultar contraseña
+    (function(){
+      const btn = document.getElementById('togglePassword');
+      const input = document.getElementById('passwordField');
+      const eyeOpen = document.getElementById('eyeOpen');
+      const eyeClosed = document.getElementById('eyeClosed');
+
+      btn?.addEventListener('click', () => {
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        eyeOpen.style.display = show ? 'none' : 'block';
+        eyeClosed.style.display = show ? 'block' : 'none';
+      });
+    })();
+
+    // Auto-ocultar alert de error después de 3.5s
+    (function(){
+      const box = document.getElementById('errorBox');
+      if(box){
+        setTimeout(()=> box.classList.remove('show'), 3500);
+      }
+    })();
+  </script>
 </body>
-
 </html>
