@@ -2,7 +2,7 @@
 session_start();
 
 // Si el usuario ya está logueado, redirigirlo
-if (isset($_SESSION['user_id'])) {
+if (!empty($_SESSION['logged_in'])) {
     header('Location: index.php');
     exit;
 }
@@ -13,30 +13,48 @@ $error = '';
 $account_disabled = false;
 $disabled_user_name = '';
 
-// Procesar login 
+// Procesar login (por CORREO)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username=?");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
-
-    if ($user && password_verify($password, $user['password'])) {
-        if ((int)$user['status'] === 0) {
-            // Usuario desactivado
-            $account_disabled = true;
-            $disabled_user_name = $user['full_name'];
-        } else {
-            // Usuario activo, iniciar sesión
-            $_SESSION['user_id']   = $user['id'];
-            $_SESSION['role']      = $user['role'];
-            $_SESSION['full_name'] = $user['full_name'];
-            header('Location: index.php');
-            exit;
-        }
+    if ($email === '' || $password === '') {
+        $error = 'Completa correo y contraseña';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Correo inválido';
     } else {
-        $error = 'Usuario o contraseña incorrectos';
+        // Busca por email
+        $stmt = $pdo->prepare("SELECT id, full_name, email, password AS password_hash, role, status, email_verified_at
+                               FROM users
+                               WHERE email = ? LIMIT 1");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($user && password_verify($password, $user['password_hash'])) {
+            if ((int)$user['status'] === 0) {
+                // Usuario desactivado
+                $account_disabled = true;
+                $disabled_user_name = $user['full_name'] ?: '';
+            } else {
+                // Usuario activo, iniciar sesión
+                $_SESSION['logged_in']      = true;                           // <— CLAVE PARA EVITAR EL BUCLE
+                $_SESSION['user_id']        = (int)$user['id'];
+                $_SESSION['role']           = $user['role'] ?? null;
+                $_SESSION['full_name']      = $user['full_name'] ?: 'Usuario';
+                $_SESSION['email']          = $user['email'];
+                $_SESSION['email_verified'] = !empty($user['email_verified_at']);
+
+                // Redirigir según verificación de correo
+                if (!$_SESSION['email_verified']) {
+                    header('Location: welcome.php?step=3');
+                } else {
+                    header('Location: index.php');
+                }
+                exit;
+            }
+        } else {
+            $error = 'Correo o contraseña incorrectos';
+        }
     }
 }
 ?>
@@ -84,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .logo img{height:34px}
     .nav-links{display:flex;gap:12px;align-items:center}
     .nav-links a{padding:10px 12px;border-radius:10px;font-weight:600;color:#0f172a;text-decoration:none}
-    .nav-links a:hover{background:#eef2ff}
+    .nav-links a:hover{background:#1874ED}
     .cta{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#fff !important;padding:10px 16px;border-radius:12px;border:1px solid #cfe0ff;box-shadow:var(--shadow)}
     .login-btn{background:#fff !important;color:var(--text) !important;border:1px solid var(--border)}
     .login-btn:hover{background:#f8fafc}
@@ -144,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       position:relative;border:1px solid #dbe4ff;background:#fff;border-radius:12px;display:flex;align-items:center;padding:10px 14px;
     }
     .input-wrap:focus-within{box-shadow:0 0 0 3px rgba(35,68,236,.15)}
-    input[type="text"],input[type="password"]{
+    input[type="email"],input[type="password"]{
       border:none;outline:none;background:transparent;width:100%;font-size:16px;color:#0f172a;
     }
     .eye-btn{
@@ -181,9 +199,6 @@ a.cta:active {
 a.cta {
   display: inline-block; 
 }
-
-
-
   </style>
 </head>
 <body>
@@ -248,7 +263,6 @@ a.cta {
             <div class="sub">Bienvenido de vuelta</div>
           </div>
         </div>
-        <!-- CTA secundario visible dentro de la card -->
         <a class="create-inline" href="signup.php" title="Crear cuenta">Crear cuenta</a>
       </div>
 
@@ -266,9 +280,9 @@ a.cta {
 
       <form method="POST" id="loginForm" novalidate>
         <div class="field">
-          <div class="label">Usuario</div>
+          <div class="label">Correo</div>
           <div class="input-wrap">
-            <input type="text" name="username" placeholder="Tu usuario" required autocomplete="username">
+            <input type="email" name="email" placeholder="tucorreo@ejemplo.com" required autocomplete="email">
           </div>
         </div>
 
@@ -294,13 +308,11 @@ a.cta {
 
         <div class="helpers">
           <a class="forgot" href="home.php#faq">¿Olvidaste tu contraseña?</a>
-          
         </div>
       </form>
     </div>
   </div>
 
-  <!-- FOOTER MINI -->
   <div class="foot">
     <div class="foot-inner">
       <div>© <?= date('Y') ?> ShockFy</div>
@@ -312,11 +324,11 @@ a.cta {
     // Mantener darkMode si lo usas en otras páginas
     (function(){
       if(localStorage.getItem('darkMode') === 'true'){
-        document.documentElement.classList.add('dark'); // por si luego activas estilos oscuros
+        document.documentElement.classList.add('dark');
       }
     })();
 
-    //  mostrar/ocultar contraseña
+    // Mostrar/ocultar contraseña
     (function(){
       const btn = document.getElementById('togglePassword');
       const input = document.getElementById('passwordField');

@@ -233,13 +233,15 @@ select {
                 <svg class="icon-left" viewBox="0 0 24 24" fill="none"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zM3 21a9 9 0 1118 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 <input class="with-icon" type="text" id="full_name" name="full_name" value="<?= htmlspecialchars($user['full_name'] ?? '') ?>" required>
               </div>
+              <div class="sub">Para saber como llamarte :)</div>
             </div>
             <div>
-              <label for="username">Nombre de usuario</label>
+              <label for="username">Correo eletrónico</label>
               <div class="field">
                 <svg class="icon-left" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h8M4 18h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 <input class="with-icon" type="text" id="username" value="<?= htmlspecialchars($user['username'] ?? '') ?>" disabled>
               </div>
+              <div class="sub">No puedes editar tu correo.</div>
             </div>
           </div>
 

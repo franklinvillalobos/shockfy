@@ -1,6 +1,6 @@
 <?php
-require 'db.php';
-require 'auth.php'; // requiere iniciar sesion
+require_once __DIR__ . '/auth_check.php'; // protege: exige login y email verificado (redirige a welcome.php si falta)
+require_once __DIR__ . '/db.php';
 
 // ================= Prefs de zona horaria / formato =================
 $user_tz  = $_SESSION['timezone']    ?? null;
